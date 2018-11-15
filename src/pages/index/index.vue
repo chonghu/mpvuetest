@@ -40,6 +40,7 @@ export default {
   methods: {
     bindViewTap () {
       const url = '../logs/main'
+      console.log(url)
       wx.navigateTo({ url })
     },
     getUserInfo () {
@@ -48,6 +49,7 @@ export default {
         success: () => {
           wx.getUserInfo({
             success: (res) => {
+              console.log('getUserInfo success!')
               this.userInfo = res.userInfo
               console.log(this.userInfo)
             }
