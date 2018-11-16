@@ -1,0 +1,7 @@
+{
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "light",
+  "navigationBarBackgroundColor": "#000",
+  "navigationBarTitleText": "FOX MPVUE-上拉-下拉",
+  "navigationBarTextStyle": "white"
+}
