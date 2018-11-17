@@ -1,61 +1,82 @@
 <template>
   <div class="container">
-    <text>{{sessionKey}}</text>
+    <text>sessionKey: {{sessionKey}}</text>
+
+    <div class="userinfo">
+      <img class="userinfo-avatar" v-if="userInfo.avatarUrl" :src="userInfo.avatarUrl" background-size="cover" />
+      <div class="userinfo-nickname">
+        <card :text="userInfo.nickName"></card>
+      </div>
+    </div>
+
     <button open-type="getPhoneNumber" @getphonenumber="getPhoneNumber">获取手机号</button>
+
+    <text v-if="phoneNumber">phoneNumber: {{phoneNumber}}</text>
   </div>
 </template>
 
 <script>
+import card from "@/components/card";
 
 export default {
-  data () {
+  data() {
     return {
+      userInfo: {},
       sessionKey: null,
-    }
+      phoneNumber: ""
+    };
+  },
+
+  components: {
+    card
   },
 
   methods: {
-    getUserInfo () {
+    login() {
       // 调用登录接口
       wx.login({
-        success: (res) => {
-          console.log('code: ', res.code);
-          this.$http.get('/pub/wx/auth/login',{code:res.code}).then(d => {
-            console.log('data: ', d.data)    
-            this.sessionKey = d.data.sessionKey
-          }).catch(err => {
-            console.log(err.status, err.message)
-          })
+        success: res => {
+          console.log("code: ", res.code);
+          this.$http
+            .get("/pub/wx/auth/login", { code: res.code })
+            .then(d => {
+              console.log("data: ", d.data);
+              this.sessionKey = d.data.sessionKey;
+            })
+            .catch(err => {
+              console.log(err.status, err.message);
+            });
 
+          //获取用户信息
           wx.getUserInfo({
             withCredentials: true,
-            success: (res) => {
-              this.userInfo = res.userInfo
-              console.log('userInfo: ', this.userInfo)
+            success: res => {
+              this.userInfo = res.userInfo;
+              console.log("userInfo: ", this.userInfo);
             },
-            fail: (res) => {
+            fail: res => {
               wx.showModal({
-                title: '警告',
-                content: '尚未进行授权，请点击确定跳转到授权页面进行授权。',
+                title: "警告",
+                content: "尚未进行授权，请点击确定跳转到授权页面进行授权。",
                 showCancel: true,
-                cancelText: '取消',
-                cancelColor: '#000000',
-                confirmText: '确定',
-                confirmColor: '#3CC51F',
-                success: (result) => {
-                  if(result.confirm){
+                cancelText: "取消",
+                cancelColor: "#000000",
+                confirmText: "确定",
+                confirmColor: "#3CC51F",
+                success: result => {
+                  if (result.confirm) {
                     wx.navigateTo({
-                      url: '../getUserInfo/main',
-                    })
+                      url: "../getUserInfo/main"
+                    });
                   }
                 },
-                fail: ()=>{},
-                complete: ()=>{}
+                fail: () => {},
+                complete: () => {}
               });
             }
-          })
+          });
         }
-      })
+      });
     },
 
     getPhoneNumber(e) {
@@ -63,55 +84,50 @@ export default {
       wx.checkSession({
         success: function(res) {
           console.log("checkSession: ", res);
-          console.log(e.mp.detail.errMsg);
-          console.log(e.mp.detail.iv);
-          console.log(e.mp.detail.encryptedData);
+          console.log("errMsg: ", e.mp.detail.errMsg);
+          console.log("iv: ", e.mp.detail.iv);
+          console.log("encryptedData: ", e.mp.detail.encryptedData);
 
           var ency = e.mp.detail.encryptedData;
           var iv = e.mp.detail.iv;
           var sessionk = that.sessionKey;
-
-          if (e.mp.detail.errMsg == "getPhoneNumber:fail user deny") {
-            console.log('拒绝')
+          console.log("sessionKey: ", sessionk);
+          if (
+            e.mp.detail.errMsg ==
+              "getPhoneNumber:fail:cancel to confirm login" ||
+            e.mp.detail.errMsg == "getPhoneNumber:fail user deny"
+          ) {
+            console.log("拒绝");
           } else {
             //同意授权
-            wx.request({
-              method: "GET",
-              url: "https://xxx/wx/deciphering.do",
-              data: {
-                encrypdata: ency,
-                ivdata: iv,
-                sessionkey: sessionk
-              },
-              header: {
-                "content-type": "application/json" // 默认值
-              },
-              success: res => {
-                console.log("解密成功~~~~~~~将解密的号码保存到本地~~~~~~~~");
-                console.log(res);
-                var phone = res.data.phoneNumber;
-                console.log(phone);
-              },
-              fail: function(res) {
-                console.log("解密失败~~~~~~~~~~~~~");
-                console.log(res);
-              }
-            });
+            that.$http
+              .get("/pub/wx/auth/getMiniAppPhoneNumberInfo", {
+                encryptedData: ency,
+                ivStr: iv,
+                sessionKey: sessionk
+              })
+              .then(d => {
+                console.log("data: ", d.data);
+                that.phoneNumber = d.data.phoneNumber;
+              })
+              .catch(err => {
+                console.log(err.status, err.message);
+              });
           }
         },
         fail: function() {
           console.log("session_key 已经失效，需要重新执行登录流程");
-          that.wxlogin(); //重新登录
+          that.login(); //重新登录
         }
       });
     }
   },
 
-  created () {
+  created() {
     // 调用应用实例的方法获取全局数据
-    this.getUserInfo()
+    this.login();
   }
-}
+};
 </script>
 
 <style scoped>
